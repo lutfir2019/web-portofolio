@@ -152,6 +152,70 @@ export default function Home() {
     }
   };
 
+  if (isInitialLoading) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background overflow-hidden">
+        {/* Background glow */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-[40vw] h-[40vw] max-w-[500px] max-h-[500px] rounded-full bg-primary/10 blur-[80px]" />
+        </div>
+
+        <div className="relative flex flex-col items-center justify-center z-10">
+          <div className="relative w-24 h-24 mb-10 flex items-center justify-center">
+            {/* Outer spinning ring */}
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0 rounded-full border-[2px] border-primary/20 border-t-primary/80 border-r-primary/80"
+            />
+
+            {/* Inner spinning ring (opposite direction) */}
+            <motion.div
+              animate={{ rotate: -360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-3 rounded-full border-[2px] border-primary/20 border-b-primary/80 border-l-primary/80"
+            />
+
+            {/* Center glowing core */}
+            <motion.div
+              animate={{
+                scale: [0.8, 1.2, 0.8],
+                opacity: [0.5, 1, 0.5],
+              }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              className="w-6 h-6 rounded-full bg-primary shadow-lg shadow-primary/60"
+            />
+          </div>
+
+          {/* Loading text */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="flex flex-col items-center gap-4"
+          >
+            <div className="text-lg md:text-xl font-bold tracking-[0.25em] text-primary uppercase font-mono">
+              Initializing
+            </div>
+
+            {/* Tech loading bar */}
+            <div className="w-48 h-[2px] bg-primary/20 rounded-full overflow-hidden relative">
+              <motion.div
+                className="absolute inset-y-0 left-0 bg-primary w-1/3"
+                animate={{ x: ["-100%", "300%"] }}
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              />
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative min-h-screen bg-background flex flex-col">
       <AnimatedBackground />
