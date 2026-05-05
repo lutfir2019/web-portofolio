@@ -1,23 +1,15 @@
 'use client'
 
 import * as React from 'react'
-import { toast, type ToastActionElement } from '@/components/ui/use-toast'
-import type { ToastProps } from '@/components/ui/toast'
+import { toast as sonnerToast } from 'sonner'
 
 export type ToastIntent = 'success' | 'error' | 'info' | 'warning' | 'default'
 
 const DEFAULT_TOAST_DURATION = 4000
 
-const variantMap: Record<Exclude<ToastIntent, 'default'>, ToastProps['variant']> = {
-  success: 'success',
-  error: 'destructive',
-  warning: 'warning',
-  info: 'info',
-}
-
 export interface ToastOptions {
   duration?: number
-  action?: ToastActionElement
+  action?: { label: string; onClick: () => void }
   onOpenChange?: (open: boolean) => void
 }
 
@@ -27,15 +19,32 @@ export function showToast(
   title?: string,
   options: ToastOptions = {},
 ) {
-  return toast({
-    title,
-    description,
-    variant: intent === 'default' ? 'default' : variantMap[intent],
+  const toastOptions: any = {
     duration: options.duration ?? DEFAULT_TOAST_DURATION,
-    action: options.action,
-    open: true,
-    onOpenChange: options.onOpenChange,
-  })
+  }
+
+  const message = title || description;
+  if (title) {
+    toastOptions.description = description;
+  }
+
+  if (options.action) {
+    toastOptions.action = options.action;
+  }
+
+  switch (intent) {
+    case 'success':
+      return sonnerToast.success(message as any, toastOptions)
+    case 'error':
+      return sonnerToast.error(message as any, toastOptions)
+    case 'warning':
+      return sonnerToast.warning(message as any, toastOptions)
+    case 'info':
+      return sonnerToast.info(message as any, toastOptions)
+    case 'default':
+    default:
+      return sonnerToast(message as any, toastOptions)
+  }
 }
 
 export function toastSuccess(

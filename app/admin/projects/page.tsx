@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Edit, ExternalLink } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { toastError, toastSuccess } from "@/components/ui/toast-utils";
 
 interface Project {
   id: number;
@@ -17,7 +17,7 @@ interface Project {
 }
 
 export default function ProjectsPage() {
-  const { toast } = useToast();
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -50,11 +50,7 @@ export default function ProjectsPage() {
     } catch (err) {
       console.error("Error fetching projects:", err);
       setError("Failed to load projects");
-      toast({
-        title: "Error",
-        description: "Failed to load projects",
-        variant: "destructive",
-      });
+      toastError("Failed to load projects");
     } finally {
       setIsLoading(false);
     }
@@ -108,10 +104,7 @@ export default function ProjectsPage() {
           projects.map((p) => (p.id === editingId ? { ...p, ...formData } : p)),
         );
 
-        toast({
-          title: "Success",
-          description: "Project updated successfully",
-        });
+        toastSuccess("Project updated successfully");
       } else {
         // Add new project
         const res = await fetch("/api/projects", {
@@ -127,21 +120,14 @@ export default function ProjectsPage() {
           setProjects([...projects, data.data]);
         }
 
-        toast({
-          title: "Success",
-          description: "Project created successfully",
-        });
+        toastSuccess("Project created successfully");
       }
       resetForm();
     } catch (err) {
       console.error("Error submitting form:", err);
-      toast({
-        title: "Error",
-        description: editingId
-          ? "Failed to update project"
-          : "Failed to create project",
-        variant: "destructive",
-      });
+      toastError(
+        editingId ? "Failed to update project" : "Failed to create project"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -189,17 +175,10 @@ export default function ProjectsPage() {
 
       setProjects(projects.filter((p) => p.id !== id));
 
-      toast({
-        title: "Success",
-        description: "Project deleted successfully",
-      });
+      toastSuccess("Project deleted successfully");
     } catch (err) {
       console.error("Error deleting project:", err);
-      toast({
-        title: "Error",
-        description: "Failed to delete project",
-        variant: "destructive",
-      });
+      toastError("Failed to delete project");
     }
   };
 

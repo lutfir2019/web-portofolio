@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Edit, Eye, EyeOff } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { toastError, toastSuccess } from "@/components/ui/toast-utils";
 
 interface BlogPost {
   id: number;
@@ -16,7 +16,7 @@ interface BlogPost {
 }
 
 export default function BlogPage() {
-  const { toast } = useToast();
+
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,11 +48,7 @@ export default function BlogPage() {
     } catch (err) {
       console.error("Error fetching posts:", err);
       setError("Failed to load posts");
-      toast({
-        title: "Error",
-        description: "Failed to load posts",
-        variant: "destructive",
-      });
+      toastError("Failed to load posts");
     } finally {
       setIsLoading(false);
     }
@@ -122,10 +118,7 @@ export default function BlogPage() {
           posts.map((p) => (p.id === editingId ? { ...p, ...formData } : p)),
         );
 
-        toast({
-          title: "Success",
-          description: "Blog post updated successfully",
-        });
+        toastSuccess("Blog post updated successfully");
       } else {
         // Add new post
         const res = await fetch("/api/blog", {
@@ -141,21 +134,16 @@ export default function BlogPage() {
           setPosts([...posts, data.data]);
         }
 
-        toast({
-          title: "Success",
-          description: "Blog post created successfully",
-        });
+        toastSuccess("Blog post created successfully");
       }
       resetForm();
     } catch (err) {
       console.error("Error submitting form:", err);
-      toast({
-        title: "Error",
-        description: editingId
+      toastError(
+        editingId
           ? "Failed to update blog post"
-          : "Failed to create blog post",
-        variant: "destructive",
-      });
+          : "Failed to create blog post"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -201,17 +189,10 @@ export default function BlogPage() {
 
       setPosts(posts.filter((p) => p.id !== id));
 
-      toast({
-        title: "Success",
-        description: "Blog post deleted successfully",
-      });
+      toastSuccess("Blog post deleted successfully");
     } catch (err) {
       console.error("Error deleting post:", err);
-      toast({
-        title: "Error",
-        description: "Failed to delete blog post",
-        variant: "destructive",
-      });
+      toastError("Failed to delete blog post");
     }
   };
 
@@ -246,17 +227,10 @@ export default function BlogPage() {
         ),
       );
 
-      toast({
-        title: "Success",
-        description: `Blog post ${updatedPublished ? "published" : "unpublished"} successfully`,
-      });
+      toastSuccess(`Blog post ${updatedPublished ? "published" : "unpublished"} successfully`);
     } catch (err) {
       console.error("Error toggling publish:", err);
-      toast({
-        title: "Error",
-        description: "Failed to update blog post status",
-        variant: "destructive",
-      });
+      toastError("Failed to update blog post status");
     }
   };
 
