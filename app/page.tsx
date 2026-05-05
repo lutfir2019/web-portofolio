@@ -6,6 +6,7 @@ import { ArrowRight, ExternalLink, Github } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { SkeletonProject } from "@/components/skeletons/skeleton";
+import { AnimatedBackground } from "@/components/animated-background";
 import {
   TBlogPost,
   TExperience,
@@ -145,21 +146,18 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Header />
+    <div className="relative min-h-screen bg-background flex flex-col">
+      <AnimatedBackground />
 
-      {/* Hero Section */}
-      <section
-        id="home"
-        className="relative flex-1 overflow-hidden flex items-center"
-      >
-        {/* Background */}
-        <div className="absolute inset-0 -z-10">
-          <div className="absolute top-0 left-1/3 w-[500px] h-[500px] bg-primary/30 rounded-full blur-[120px] animate-float"></div>
-          <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-accent/30 rounded-full blur-[120px] animate-float [animation-delay:2s]"></div>
-        </div>
+      <div className="relative z-10 flex flex-col flex-1">
+        <Header />
 
-        <div className="max-w-7xl mx-auto px-6 py-20 md:py-28 w-full">
+        {/* Hero Section */}
+        <section
+          id="home"
+          className="relative flex-1 flex items-center"
+        >
+          <div className="max-w-7xl mx-auto px-6 py-20 md:py-28 w-full">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             {/* LEFT CONTENT */}
             <div className="flex flex-col gap-6 text-center md:text-left">
@@ -575,17 +573,8 @@ export default function Home() {
       {/* Contact Section */}
       <section
         id="contact"
-        className="py-20 md:py-32 border-t border-border relative overflow-hidden"
+        className="py-20 md:py-32 border-t border-border relative"
       >
-        {/* Animated background */}
-        <div className="absolute inset-0 -z-10 opacity-20">
-          <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-primary rounded-full mix-blend-multiply filter blur-3xl animate-float"></div>
-          <div
-            className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent rounded-full mix-blend-multiply filter blur-3xl animate-float"
-            style={{ animationDelay: "2s" }}
-          ></div>
-        </div>
-
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -615,7 +604,8 @@ export default function Home() {
         </motion.div>
       </section>
 
-      <Footer />
+        <Footer />
+      </div>
     </div>
   );
 }
