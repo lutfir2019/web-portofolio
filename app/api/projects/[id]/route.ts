@@ -30,7 +30,16 @@ export async function PUT(
   try {
     const { id } = await context.params;
     const data = await request.json();
-    const { title, description, image, technologies, liveLink, githubLink, featured } = data;
+    const {
+      title,
+      description,
+      image,
+      technologies,
+      liveLink,
+      githubLink,
+      featured,
+      order,
+    } = data;
 
     if (!title) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
@@ -41,16 +50,21 @@ export async function PUT(
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    await update("projects", { id }, {
-      title,
-      description: description || "",
-      image: image || "",
-      technologies: technologies || "",
-      liveLink: liveLink || "",
-      githubLink: githubLink || "",
-      featured: Boolean(featured),
-      updatedAt: new Date().toISOString(),
-    });
+    await update(
+      "projects",
+      { id },
+      {
+        title,
+        description: description || "",
+        image: image || "",
+        technologies: technologies || "",
+        liveLink: liveLink || "",
+        githubLink: githubLink || "",
+        featured: Boolean(featured),
+        order: order,
+        updatedAt: new Date().toISOString(),
+      },
+    );
 
     return NextResponse.json({ success: true, id });
   } catch (error) {

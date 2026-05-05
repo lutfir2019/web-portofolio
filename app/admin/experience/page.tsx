@@ -13,6 +13,7 @@ interface Experience {
   endDate: string;
   currentlyWorking: boolean;
   description: string;
+  order: number;
 }
 
 export default function ExperiencePage() {
@@ -28,6 +29,7 @@ export default function ExperiencePage() {
     endDate: "",
     currentlyWorking: false,
     description: "",
+    order: 0,
   });
 
   useEffect(() => {
@@ -39,7 +41,10 @@ export default function ExperiencePage() {
       const res = await fetch("/api/experience");
       const data = await res.json();
       if (res.ok) {
-        setExperiences(data);
+        if (Array.isArray(data)) {
+          const sorted = [...data].sort((a, b) => b.order - a.order);
+          setExperiences(sorted);
+        }
       } else {
         console.error("[v0] Error fetching experiences:", data);
       }
@@ -59,7 +64,11 @@ export default function ExperiencePage() {
     setFormData({
       ...formData,
       [name]:
-        type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+        type === "checkbox"
+          ? (e.target as HTMLInputElement).checked
+          : type === "number"
+            ? parseInt(value) || 0
+            : value,
     });
   };
 
@@ -93,7 +102,9 @@ export default function ExperiencePage() {
         );
       } else {
         console.error("[v0] Error saving experience:", data);
-        toastError("Error saving experience: " + (data.error || "Unknown error"));
+        toastError(
+          "Error saving experience: " + (data.error || "Unknown error"),
+        );
       }
     } catch (error) {
       console.error("[v0] Error saving experience:", error);
@@ -111,6 +122,7 @@ export default function ExperiencePage() {
       endDate: "",
       currentlyWorking: false,
       description: "",
+      order: 0,
     });
     setEditingId(null);
     setShowForm(false);
@@ -124,6 +136,7 @@ export default function ExperiencePage() {
       endDate: exp.endDate,
       currentlyWorking: exp.currentlyWorking,
       description: exp.description,
+      order: exp.order,
     });
     setEditingId(exp.id);
     setShowForm(true);
@@ -144,7 +157,9 @@ export default function ExperiencePage() {
         toastSuccess("Experience deleted successfully.");
       } else {
         console.error("[v0] Error deleting experience:", data);
-        toastError("Error deleting experience: " + (data.error || "Unknown error"));
+        toastError(
+          "Error deleting experience: " + (data.error || "Unknown error"),
+        );
       }
     } catch (error) {
       console.error("[v0] Error deleting experience:", error);
@@ -248,22 +263,37 @@ export default function ExperiencePage() {
               </div>
             </div>
 
-            {/* Currently Working */}
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="currentlyWorking"
-                name="currentlyWorking"
-                checked={formData.currentlyWorking}
-                onChange={handleInputChange}
-                className="w-4 h-4 rounded border-border cursor-pointer"
-              />
-              <label
-                htmlFor="currentlyWorking"
-                className="text-sm font-medium text-foreground cursor-pointer"
-              >
-                I currently work here
-              </label>
+            {/* Currently Working and Order */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="currentlyWorking"
+                  name="currentlyWorking"
+                  checked={formData.currentlyWorking}
+                  onChange={handleInputChange}
+                  className="w-4 h-4 rounded border-border cursor-pointer"
+                />
+                <label
+                  htmlFor="currentlyWorking"
+                  className="text-sm font-medium text-foreground cursor-pointer"
+                >
+                  I currently work here
+                </label>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Order
+                </label>
+                <input
+                  type="number"
+                  name="order"
+                  value={formData.order}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-foreground"
+                  placeholder="0"
+                />
+              </div>
             </div>
 
             {/* Description */}
@@ -345,10 +375,15 @@ export default function ExperiencePage() {
                 </div>
               </div>
 
-              <p className="text-sm text-foreground/60 mb-3">
-                {formatDate(exp.startDate)} {" - "}{" "}
-                {exp.currentlyWorking ? "Present" : formatDate(exp.endDate)}
-              </p>
+              <div className="flex items-center gap-4 mb-3">
+                <p className="text-sm text-foreground/60">
+                  {formatDate(exp.startDate)} {" - "}{" "}
+                  {exp.currentlyWorking ? "Present" : formatDate(exp.endDate)}
+                </p>
+                <span className="px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-medium">
+                  Order: {exp.order}
+                </span>
+              </div>
 
               {exp.description && (
                 <p className="text-foreground/70">{exp.description}</p>

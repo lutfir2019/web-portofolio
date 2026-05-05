@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Edit, ExternalLink } from "lucide-react";
 import { toastError, toastSuccess } from "@/components/ui/toast-utils";
+import Image from "next/image";
 
 interface Project {
   id: number;
@@ -13,11 +14,11 @@ interface Project {
   liveLink: string;
   githubLink: string;
   featured: boolean;
+  order: number;
   createdAt: string;
 }
 
 export default function ProjectsPage() {
-
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -32,6 +33,7 @@ export default function ProjectsPage() {
     liveLink: "",
     githubLink: "",
     featured: false,
+    order: 0,
   });
 
   // Fetch projects
@@ -46,7 +48,10 @@ export default function ProjectsPage() {
       const res = await fetch("/api/projects");
       if (!res.ok) throw new Error("Failed to fetch projects");
       const data = await res.json();
-      setProjects(data?.data);
+      if (Array.isArray(data?.data)) {
+        const sorted = [...data.data].sort((a, b) => b.order - a.order);
+        setProjects(sorted);
+      }
     } catch (err) {
       console.error("Error fetching projects:", err);
       setError("Failed to load projects");
@@ -80,7 +85,11 @@ export default function ProjectsPage() {
       setFormData({
         ...formData,
         [name]:
-          type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
+          type === "checkbox"
+            ? (e.target as HTMLInputElement).checked
+            : type === "number"
+              ? parseInt(value) || 0
+              : value,
       });
     }
   };
@@ -126,7 +135,7 @@ export default function ProjectsPage() {
     } catch (err) {
       console.error("Error submitting form:", err);
       toastError(
-        editingId ? "Failed to update project" : "Failed to create project"
+        editingId ? "Failed to update project" : "Failed to create project",
       );
     } finally {
       setIsSubmitting(false);
@@ -142,6 +151,7 @@ export default function ProjectsPage() {
       liveLink: "",
       githubLink: "",
       featured: false,
+      order: 0,
     });
     setShowForm(false);
     setEditingId(null);
@@ -156,6 +166,7 @@ export default function ProjectsPage() {
       liveLink: project.liveLink,
       githubLink: project.githubLink,
       featured: project.featured,
+      order: project.order,
     });
     setEditingId(project.id);
     setShowForm(true);
@@ -202,6 +213,7 @@ export default function ProjectsPage() {
               liveLink: "",
               githubLink: "",
               featured: false,
+              order: 0,
             });
           }}
           className="flex cursor-pointer items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium disabled:opacity-50"
@@ -320,22 +332,37 @@ export default function ProjectsPage() {
               </div>
             </div>
 
-            {/* Featured */}
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="featured"
-                name="featured"
-                checked={formData.featured}
-                onChange={handleInputChange}
-                className="w-4 h-4 rounded border-border cursor-pointer"
-              />
-              <label
-                htmlFor="featured"
-                className="text-sm font-medium text-foreground cursor-pointer"
-              >
-                Mark as featured
-              </label>
+            {/* Featured and Order */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="featured"
+                  name="featured"
+                  checked={formData.featured}
+                  onChange={handleInputChange}
+                  className="w-4 h-4 rounded border-border cursor-pointer"
+                />
+                <label
+                  htmlFor="featured"
+                  className="text-sm font-medium text-foreground cursor-pointer"
+                >
+                  Mark as featured
+                </label>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Order
+                </label>
+                <input
+                  type="number"
+                  name="order"
+                  value={formData.order}
+                  onChange={handleInputChange}
+                  className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-foreground"
+                  placeholder="0"
+                />
+              </div>
             </div>
 
             {/* Buttons */}
@@ -388,9 +415,9 @@ export default function ProjectsPage() {
           <p className="text-foreground/60">Loading projects...</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
           {projects?.length === 0 ? (
-            <div className="bg-card border border-border rounded-xl p-12 text-center">
+            <div className="bg-card border border-border rounded-xl p-12 text-center col-span-2 lg:col-span-3">
               <p className="text-foreground/60 mb-4">No projects yet</p>
               <button
                 onClick={() => setShowForm(true)}
@@ -402,29 +429,34 @@ export default function ProjectsPage() {
             </div>
           ) : (
             projects?.map((project) => (
-              <div className="grid md:grid-cols-2 gap-6" key={project.id}>
+              <div className="grid gap-6" key={project.id}>
                 <div className="bg-card border border-border rounded-xl overflow-hidden hover:border-primary/50 transition-colors">
-                  {project.image && (
-                    <img
-                      src={project.image}
-                      alt={project.title}
-                      className="w-full h-48 object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                  )}
+                  <Image
+                    src={project.image || "/placeholder.svg"}
+                    alt={project.title}
+                    width={400}
+                    height={200}
+                    className="w-full h-48 object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = "/placeholder.svg";
+                    }}
+                  />
                   <div className="p-6">
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <h3 className="text-xl font-semibold text-foreground">
                           {project.title}
                         </h3>
-                        {Boolean(project.featured) && (
-                          <span className="inline-block mt-2 px-2 py-1 bg-primary/10 text-primary text-xs rounded font-medium">
-                            Featured
+                        <div className="flex gap-2 mt-2">
+                          {Boolean(project.featured) && (
+                            <span className="inline-block px-2 py-1 bg-primary/10 text-primary text-xs rounded font-medium">
+                              Featured
+                            </span>
+                          )}
+                          <span className="inline-block px-2 py-1 bg-primary/10 text-primary text-xs rounded font-medium">
+                            Order: {project.order}
                           </span>
-                        )}
+                        </div>
                       </div>
                       <div className="flex gap-2">
                         <button

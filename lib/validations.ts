@@ -72,6 +72,7 @@ export interface TProject extends Omit<ProjectInput, 'technologies'> {
 
 export interface TExperience extends ExperienceInput {
   id: number;
+  order: number;
   createdAt: string;
   updatedAt: string;
 }

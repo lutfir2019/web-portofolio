@@ -43,19 +43,41 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("[v0] GET /api/projects error:", error);
-    return NextResponse.json({ error: "Failed to fetch projects" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch projects" },
+      { status: 500 },
+    );
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
-    const { title, description, image, technologies, liveLink, githubLink, featured } = data;
+    const {
+      title,
+      description,
+      image,
+      technologies,
+      liveLink,
+      githubLink,
+      featured,
+    } = data;
 
     if (!title) {
       return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
+    // 🔥 Ambil order terakhir
+    const { data: lastProject } = await supabase
+      .from("projects")
+      .select("order")
+      .order("order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const nextOrder = lastProject ? lastProject.order + 1 : 1;
+
+    // 🚀 Insert dengan order baru
     const { data: newProject, error } = await supabase
       .from("projects")
       .insert([
@@ -68,6 +90,7 @@ export async function POST(request: NextRequest) {
           liveLink: liveLink || "",
           githubLink: githubLink || "",
           featured: Boolean(featured),
+          order: nextOrder, // ✅ tambahkan ini
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
@@ -79,9 +102,15 @@ export async function POST(request: NextRequest) {
       throw error;
     }
 
-    return NextResponse.json({ success: true, data: newProject }, { status: 201 });
+    return NextResponse.json(
+      { success: true, data: newProject },
+      { status: 201 },
+    );
   } catch (error) {
     console.error("[v0] POST /api/projects error:", error);
-    return NextResponse.json({ error: "Failed to create project" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to create project" },
+      { status: 500 },
+    );
   }
 }
