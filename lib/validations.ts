@@ -38,6 +38,15 @@ export const BlogPostSchema = z.object({
   published: z.boolean().optional().default(false),
 });
 
+export const AdminBlogPostSchema = z.object({
+  title: z.string().min(1, 'Post title is required').max(200, 'Title is too long'),
+  description: z.string().min(10, 'Description must be at least 10 characters').max(500, 'Description is too long'),
+  url: z.string().min(1, 'URL or slug is required').max(200, 'URL is too long'),
+  image: z.string().optional(),
+  published: z.boolean().optional().default(false),
+  publishedAt: z.string().optional().or(z.literal('')),
+});
+
 export const ProfileSchema = z.object({
   fullName: z.string().min(1, 'Full name is required').max(100, 'Name is too long'),
   title: z.string().max(100, 'Title is too long').optional(),
@@ -59,6 +68,7 @@ export type ProjectInput = z.infer<typeof ProjectSchema>;
 export type ExperienceInput = z.infer<typeof ExperienceSchema>;
 export type SkillInput = z.infer<typeof SkillSchema>;
 export type BlogPostInput = z.infer<typeof BlogPostSchema>;
+export type AdminBlogPostInput = z.infer<typeof AdminBlogPostSchema>;
 export type ProfileInput = z.infer<typeof ProfileSchema>;
 export type SocialLinkInput = z.infer<typeof SocialLinkSchema>;
 

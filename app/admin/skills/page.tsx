@@ -1,16 +1,39 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Plus, Trash2, Edit } from "lucide-react";
-import { Spinner } from "@/components/ui/spinner";
-import { toastError, toastSuccess } from "@/components/ui/toast-utils";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { Edit, Plus, Trash2, Wrench } from "lucide-react";
 
-interface Skill {
+import { ConfirmDialog } from "@/components/admin/confirm-dialog";
+import { DataToolbar } from "@/components/admin/data-toolbar";
+import { EmptyState } from "@/components/admin/empty-state";
+import { ErrorState } from "@/components/admin/error-state";
+import { FormSection } from "@/components/admin/form-section";
+import { PageHeader } from "@/components/admin/page-header";
+import { StatusBadge } from "@/components/admin/status-badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toastError, toastSuccess } from "@/components/ui/toast-utils";
+import { apiRequest } from "@/lib/api-client";
+import { SkillInput, SkillSchema } from "@/lib/validations";
+
+type Skill = SkillInput & {
   id: number;
-  name: string;
-  category: string;
-  proficiency: number;
-}
+  order?: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
 
 const categories = [
   "Frontend",
@@ -21,294 +44,382 @@ const categories = [
   "Other",
 ];
 
+const defaultValues: SkillInput = {
+  name: "",
+  category: "Frontend",
+  proficiency: 80,
+};
+
 export default function SkillsPage() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    category: "Frontend",
-    proficiency: 100,
+  const [error, setError] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Skill | null>(null);
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("all");
+  const [sort, setSort] = useState("category-asc");
+
+  const {
+    formState: { errors, isSubmitting },
+    handleSubmit,
+    register,
+    reset,
+    watch,
+  } = useForm<SkillInput>({
+    resolver: zodResolver(SkillSchema),
+    defaultValues,
   });
 
-  useEffect(() => {
-    fetchSkills();
-  }, []);
+  const proficiency = watch("proficiency");
 
-  const fetchSkills = async () => {
+  const fetchSkills = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
     try {
-      const res = await fetch("/api/skills");
-      const data = await res.json();
-      if (res.ok) {
-        setSkills(data);
-      } else {
-        console.error("[v0] Error fetching skills:", data);
-      }
-    } catch (error) {
-      console.error("[v0] Error fetching skills:", error);
+      const data = await apiRequest<Skill[]>("/api/skills");
+      setSkills(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("[admin] Skills load error:", err);
+      const message = err instanceof Error ? err.message : "Failed to load skills";
+      setError(message);
+      toastError(message);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-  ) => {
-    const { name, value, type } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === "range" ? parseInt(value) : value,
+  useEffect(() => {
+    void fetchSkills();
+  }, [fetchSkills]);
+
+  const categoryOptions = useMemo(() => {
+    const dynamic = Array.from(new Set(skills.map((skill) => skill.category)));
+    return [
+      { label: "All categories", value: "all" },
+      ...Array.from(new Set([...categories, ...dynamic])).map((item) => ({
+        label: item,
+        value: item,
+      })),
+    ];
+  }, [skills]);
+
+  const filteredSkills = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    return [...skills]
+      .filter((skill) => {
+        const matchesSearch =
+          !query ||
+          skill.name.toLowerCase().includes(query) ||
+          skill.category.toLowerCase().includes(query);
+        const matchesCategory = category === "all" || skill.category === category;
+
+        return matchesSearch && matchesCategory;
+      })
+      .sort((a, b) => {
+        if (sort === "name-asc") return a.name.localeCompare(b.name);
+        if (sort === "proficiency-desc") {
+          return (b.proficiency ?? 0) - (a.proficiency ?? 0);
+        }
+        if (sort === "proficiency-asc") {
+          return (a.proficiency ?? 0) - (b.proficiency ?? 0);
+        }
+        return (
+          a.category.localeCompare(b.category) || a.name.localeCompare(b.name)
+        );
+      });
+  }, [category, search, skills, sort]);
+
+  const groupedSkills = useMemo(() => {
+    return filteredSkills.reduce<Record<string, Skill[]>>((groups, skill) => {
+      groups[skill.category] = groups[skill.category] || [];
+      groups[skill.category].push(skill);
+      return groups;
+    }, {});
+  }, [filteredSkills]);
+
+  function openCreateForm() {
+    setEditingSkill(null);
+    reset(defaultValues);
+    setFormOpen(true);
+  }
+
+  function openEditForm(skill: Skill) {
+    setEditingSkill(skill);
+    reset({
+      name: skill.name || "",
+      category: skill.category || "Other",
+      proficiency: Number(skill.proficiency ?? 80),
     });
-  };
+    setFormOpen(true);
+  }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
+  async function onSubmit(values: SkillInput) {
     try {
-      const method = editingId ? "PUT" : "POST";
-      const url = "/api/skills";
-
-      const payload = editingId ? { id: editingId, ...formData } : formData;
-
-      const res = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
+      await apiRequest("/api/skills", {
+        method: editingSkill ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          editingSkill ? { id: editingSkill.id, ...values } : values,
+        ),
       });
 
-      const data = await res.json();
-
-      if (res.ok) {
-        await fetchSkills();
-        resetForm();
-        toastSuccess(
-          editingId ? "Skill updated successfully." : "Skill added successfully.",
-        );
-      } else {
-        console.error("[v0] Error saving skill:", data);
-        toastError("Error saving skill: " + (data.error || "Unknown error"));
-      }
-    } catch (error) {
-      console.error("[v0] Error saving skill:", error);
-      toastError("Error saving skill");
-    } finally {
-      setIsSubmitting(false);
+      toastSuccess(
+        editingSkill ? "Skill updated successfully." : "Skill added successfully.",
+      );
+      setFormOpen(false);
+      setEditingSkill(null);
+      reset(defaultValues);
+      await fetchSkills();
+    } catch (err) {
+      console.error("[admin] Skill save error:", err);
+      toastError(err instanceof Error ? err.message : "Failed to save skill");
     }
-  };
+  }
 
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      category: "Frontend",
-      proficiency: 100,
-    });
-    setEditingId(null);
-    setShowForm(false);
-  };
-
-  const handleEdit = (skill: Skill) => {
-    setFormData({
-      name: skill.name,
-      category: skill.category,
-      proficiency: skill.proficiency,
-    });
-    setEditingId(skill.id);
-    setShowForm(true);
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm("Delete this skill?")) return;
+  async function handleDeleteSkill() {
+    if (!deleteTarget) return;
 
     try {
-      const res = await fetch(`/api/skills?id=${id}`, {
+      await apiRequest(`/api/skills?id=${deleteTarget.id}`, {
         method: "DELETE",
       });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        await fetchSkills();
-        toastSuccess("Skill deleted successfully.");
-      } else {
-        console.error("[v0] Error deleting skill:", data);
-        toastError("Error deleting skill: " + (data.error || "Unknown error"));
-      }
-    } catch (error) {
-      console.error("[v0] Error deleting skill:", error);
-      toastError("Error deleting skill");
+      setSkills((current) =>
+        current.filter((skill) => skill.id !== deleteTarget.id),
+      );
+      toastSuccess("Skill deleted successfully.");
+    } catch (err) {
+      console.error("[admin] Skill delete error:", err);
+      toastError(err instanceof Error ? err.message : "Failed to delete skill");
     }
-  };
-
-  const skillsByCategory = categories
-    .map((cat) => ({
-      category: cat,
-      items: skills.filter((s) => s.category === cat),
-    }))
-    .filter((g) => g.items.length > 0);
-
-  if (isLoading) {
-    return (
-      <div className="space-y-8 pt-10">
-        <div>
-          <h1 className="text-4xl font-bold text-foreground mb-2">Skills</h1>
-          <p className="text-foreground/60">Manage your professional skills</p>
-        </div>
-
-        <div className="rounded-3xl border border-border bg-card p-12 text-center shadow-sm">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Spinner className="h-12 w-12" />
-          </div>
-          <h2 className="text-2xl font-semibold text-foreground mb-2">
-            Memuat skills...
-          </h2>
-          <p className="text-foreground/70 max-w-xl mx-auto">
-            Sedang mengambil data skills dari database.
-          </p>
-        </div>
-      </div>
-    );
   }
 
   return (
-    <div className="space-y-8 pt-10">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-4xl font-bold text-foreground mb-2">Skills</h1>
-          <p className="text-foreground/60">Manage your professional skills</p>
+    <div className="space-y-6">
+      <PageHeader
+        title="Skills"
+        description="Manage skill categories, names, and proficiency levels."
+        action={
+          <Button type="button" onClick={openCreateForm} disabled={isLoading}>
+            <Plus className="size-4" />
+            Add Skill
+          </Button>
+        }
+      />
+
+      <DataToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search skills..."
+        category={category}
+        onCategoryChange={setCategory}
+        categoryOptions={categoryOptions}
+        sort={sort}
+        onSortChange={setSort}
+        sortOptions={[
+          { label: "Category A-Z", value: "category-asc" },
+          { label: "Name A-Z", value: "name-asc" },
+          { label: "Proficiency high to low", value: "proficiency-desc" },
+          { label: "Proficiency low to high", value: "proficiency-asc" },
+        ]}
+        onReset={() => {
+          setSearch("");
+          setCategory("all");
+          setSort("category-asc");
+        }}
+      />
+
+      {error ? (
+        <ErrorState description={error} onRetry={() => void fetchSkills()} />
+      ) : null}
+
+      {isLoading ? (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <Skeleton key={index} className="h-32 rounded-lg" />
+          ))}
         </div>
-        <button
-          onClick={() => {
-            setShowForm(true);
-          }}
-          className="flex cursor-pointer items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium"
-        >
-          <Plus size={20} />
-          Add Skill
-        </button>
-      </div>
-
-      {/* Form */}
-      {showForm && (
-        <div className="bg-card border border-border rounded-xl p-6">
-          <h2 className="text-2xl font-bold text-foreground mb-6">
-            {editingId ? "Edit Skill" : "Add New Skill"}
-          </h2>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Name */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Skill Name
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-foreground"
-                placeholder="React"
-                required
-              />
-            </div>
-
-            {/* Category */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Category
-              </label>
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleInputChange}
-                className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all text-foreground"
-              >
-                {categories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
+      ) : filteredSkills.length === 0 ? (
+        <EmptyState
+          title={skills.length === 0 ? "No skills yet" : "No skills found"}
+          description={
+            skills.length === 0
+              ? "Add the first skill record."
+              : "Adjust search or category filters."
+          }
+          icon={Wrench}
+          action={
+            <Button type="button" onClick={openCreateForm}>
+              <Plus className="size-4" />
+              Add Skill
+            </Button>
+          }
+        />
+      ) : (
+        <div className="space-y-6">
+          {Object.entries(groupedSkills).map(([group, items]) => (
+            <section key={group} className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-lg font-semibold">{group}</h2>
+                <StatusBadge status={`${items.length} item${items.length === 1 ? "" : "s"}`} />
+              </div>
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {items.map((skill) => (
+                  <article
+                    key={skill.id}
+                    className="rounded-lg border bg-card p-4 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="truncate font-semibold">{skill.name}</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {skill.proficiency}% proficiency
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => openEditForm(skill)}
+                          aria-label={`Edit ${skill.name}`}
+                        >
+                          <Edit className="size-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => setDeleteTarget(skill)}
+                          aria-label={`Delete ${skill.name}`}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${skill.proficiency}%` }}
+                      />
+                    </div>
+                  </article>
                 ))}
-              </select>
-            </div>
-
-            {/* Buttons */}
-            <div className="flex gap-3">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="flex-1 cursor-pointer px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {isSubmitting && <Spinner className="h-4 w-4" />}
-                {editingId ? "Update" : "Add"} Skill
-              </button>
-              <button
-                type="button"
-                onClick={resetForm}
-                disabled={isSubmitting}
-                className="flex-1 cursor-pointer px-4 py-2 border border-border rounded-lg hover:bg-card transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+              </div>
+            </section>
+          ))}
         </div>
       )}
 
-      {/* Skills by Category */}
-      <div className="space-y-8">
-        {skillsByCategory.length === 0 ? (
-          <div className="bg-card border border-border rounded-xl p-12 text-center">
-            <p className="text-foreground/60 mb-4">No skills added yet</p>
-            <button
-              onClick={() => setShowForm(true)}
-              className="inline-flex cursor-pointer items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity font-medium"
-            >
-              <Plus size={18} />
-              Add your first skill
-            </button>
-          </div>
-        ) : (
-          skillsByCategory.map((group) => (
-            <div key={group.category}>
-              <h3 className="text-xl font-semibold text-foreground mb-4">
-                {group.category}
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {group.items.map((skill) => (
-                  <div
-                    key={skill.id}
-                    className="bg-card border border-border rounded-lg p-4"
-                  >
-                    <div className="flex justify-between items-start mb-3">
-                      <h4 className="font-medium text-foreground">
-                        {skill.name}
-                      </h4>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEdit(skill)}
-                          className="p-1 cursor-pointer text-foreground/60 hover:text-primary transition-colors"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(skill.id)}
-                          className="p-1 cursor-pointer text-foreground/60 hover:text-destructive transition-colors"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+      <Dialog
+        open={formOpen}
+        onOpenChange={(open) => {
+          if (isSubmitting) return;
+          setFormOpen(open);
+          if (!open) {
+            setEditingSkill(null);
+            reset(defaultValues);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingSkill ? "Edit Skill" : "Add Skill"}</DialogTitle>
+            <DialogDescription>
+              Set the category and proficiency shown in the portfolio.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <FormSection title="Skill Details">
+              <div className="space-y-2">
+                <Label htmlFor="name">Skill Name</Label>
+                <Input id="name" {...register("name")} />
+                {errors.name ? (
+                  <p className="text-sm text-destructive">{errors.name.message}</p>
+                ) : null}
               </div>
-            </div>
-          ))
-        )}
-      </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="category">Category</Label>
+                <select
+                  id="category"
+                  {...register("category")}
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                >
+                  {categories.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+                {errors.category ? (
+                  <p className="text-sm text-destructive">
+                    {errors.category.message}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="proficiency">Proficiency</Label>
+                  <span className="text-sm font-medium">{proficiency}%</span>
+                </div>
+                <Input
+                  id="proficiency"
+                  type="range"
+                  min={0}
+                  max={100}
+                  {...register("proficiency", { valueAsNumber: true })}
+                />
+                {errors.proficiency ? (
+                  <p className="text-sm text-destructive">
+                    {errors.proficiency.message}
+                  </p>
+                ) : null}
+              </div>
+            </FormSection>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setFormOpen(false)}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting
+                  ? "Saving..."
+                  : editingSkill
+                    ? "Save Changes"
+                    : "Add Skill"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+        title="Delete skill?"
+        description={
+          deleteTarget
+            ? `This will permanently delete "${deleteTarget.name}".`
+            : "This action cannot be undone."
+        }
+        confirmLabel="Delete"
+        destructive
+        onConfirm={handleDeleteSkill}
+      />
     </div>
   );
 }
