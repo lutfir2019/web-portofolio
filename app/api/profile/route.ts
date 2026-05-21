@@ -8,7 +8,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(profile || {});
   } catch (error) {
     console.error("[v0] GET /api/profile error:", error);
-    return NextResponse.json({ error: "Failed to fetch profile" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch profile" },
+      { status: 500 },
+    );
   }
 }
 
@@ -40,6 +43,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[v0] POST /api/profile error:", error);
-    return NextResponse.json({ error: "Failed to update profile" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to update profile" },
+      { status: 500 },
+    );
   }
 }
