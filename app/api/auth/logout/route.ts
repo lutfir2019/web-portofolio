@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/db";
+import { supabaseAuth } from "@/lib/db";
 
 export async function POST() {
   try {
     // Sign out from Supabase
-    const { error } = await supabase.auth.signOut();
+    const { error } = await supabaseAuth.auth.signOut();
 
     if (error) {
       console.error("[v0] Supabase logout error:", error);

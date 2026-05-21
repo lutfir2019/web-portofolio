@@ -10,9 +10,17 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   );
 }
 
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
 });
+
+export const supabaseAuth = createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY ?? SUPABASE_SERVICE_ROLE_KEY,
+  { auth: { persistSession: false } },
+);
 
 function applyFilters(query: any, filters: Record<string, any>) {
   return Object.entries(filters).reduce((currentQuery, [key, value]) => {

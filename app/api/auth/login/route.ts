@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/db";
+import { supabase, supabaseAuth } from "@/lib/db";
 import { LoginSchema } from "@/lib/validations";
 
 const COOKIE_MAX_AGE = Number(process.env.JWT_COOKIE_MAX_AGE ?? 900);
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
     const { email, password } = validation.data;
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabaseAuth.auth.signInWithPassword({
       email,
       password,
     });

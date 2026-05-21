@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { supabase } from "@/lib/db";
+import { supabase, supabaseAuth } from "@/lib/db";
 
 const PUBLIC_PATHS = ["/login", "/register", "/forgot-password"];
 const PRIVATE_PREFIXES = ["/admin"];
@@ -16,14 +16,14 @@ function isPrivatePath(pathname: string) {
 }
 
 async function verifyToken(token: string) {
-  const { data: { user }, error } = await supabase.auth.getUser(token);
+  const { data: { user }, error } = await supabaseAuth.auth.getUser(token);
   if (error || !user) {
     throw new Error("Invalid token");
   }
 }
 
 async function refreshSession(refreshToken: string) {
-  const { data, error } = await supabase.auth.refreshSession({ refresh_token: refreshToken });
+  const { data, error } = await supabaseAuth.auth.refreshSession({ refresh_token: refreshToken });
   if (error || !data?.session) {
     throw new Error("Refresh failed");
   }
