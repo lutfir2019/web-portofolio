@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 import { deleteFrom, selectOne, update } from "@/lib/db";
 
 const USER_ID = 1;
@@ -22,6 +23,8 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 }
 
 export async function PUT(request: NextRequest, context: RouteContext) {
+  const auth = requireAuth(request);
+  if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { id } = await context.params;
     const body = await request.json();
@@ -66,6 +69,8 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 }
 
 export async function DELETE(_request: NextRequest, context: RouteContext) {
+  const auth = requireAuth(_request);
+  if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { id } = await context.params;
 

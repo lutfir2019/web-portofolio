@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 import { insert, selectAll } from "@/lib/db";
 
 export async function GET() {
@@ -20,6 +21,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = requireAuth(request);
+  if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const body = await request.json();
     const { platform, url, order = 0 } = body;

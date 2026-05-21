@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteFrom, selectOne, update } from "@/lib/db";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET(
   _request: NextRequest,
@@ -30,6 +31,8 @@ export async function PUT(
   request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
+  const auth = requireAuth(request);
+  if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { id } = await context.params;
     const data = await request.json();
@@ -74,6 +77,8 @@ export async function DELETE(
   _request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
+  const auth = requireAuth(_request);
+  if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const { id } = await context.params;
     const existingPost = await selectOne("blog_posts", { id });

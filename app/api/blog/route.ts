@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 import { insert, selectAll, selectOne } from "@/lib/db";
 
 const USER_ID = 1;
@@ -38,6 +39,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = requireAuth(request);
+  if (!auth) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     const data = await request.json();
     const { title, description, url, image, published, publishedAt } = data;

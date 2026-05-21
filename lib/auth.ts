@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { deleteFrom, hashPassword, insert, selectOne } from "./db";
 import crypto from "crypto";
+import { NextRequest } from "next/server";
 
 const SESSION_COOKIE_NAME = "portfolio_session";
 const SESSION_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -114,4 +115,23 @@ export async function getCurrentUser(): Promise<SessionData | null> {
 export async function verifyAuth() {
   const user = await getCurrentUser();
   return user || null;
+}
+
+export function getAccessTokenFromRequest(request: NextRequest) {
+  // cek cookie dulu
+  const cookie = request.cookies.get("access_token")?.value;
+  if (cookie) return cookie;
+
+  // cek header Authorization: Bearer <token>
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) return authHeader.split(" ")[1];
+
+  return null;
+}
+
+// Mengembalikan objek sederhana jika terautentikasi, atau null jika tidak
+export function requireAuth(request: NextRequest) {
+  const token = getAccessTokenFromRequest(request);
+  if (!token) return null;
+  return { accessToken: token };
 }
